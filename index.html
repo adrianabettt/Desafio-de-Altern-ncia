@@ -12,12 +12,24 @@
         .question-box { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin: 20px 0; font-size: 1.2rem; border-left: 5px solid var(--primary); line-height: 1.6; text-align: left; }
         .options { display: grid; gap: 12px; margin-top: 20px; }
         .opt { background: #334155; padding: 18px; border-radius: 12px; cursor: pointer; transition: 0.3s; font-weight: bold; border: 2px solid transparent; text-align: left; }
-        .opt:hover { background: #475569; border-color: var(--primary); transform: translateX(5px); }
+        .opt.correct { background: var(--success) !important; border-color: white; }
+        .opt.wrong { background: var(--secondary) !important; border-color: white; }
+        .opt:hover:not(.disabled) { background: #475569; border-color: var(--primary); transform: translateX(5px); }
+        .disabled { cursor: not-allowed; opacity: 0.8; }
         
+        /* Box de Explicação */
+        #feedback-box { display: none; margin-top: 20px; padding: 15px; border-radius: 10px; font-weight: bold; animation: fadeIn 0.5s; }
+        .feedback-errado { background: rgba(244, 63, 94, 0.2); border: 1px solid var(--secondary); color: #ff8a9e; }
+        .feedback-correto { background: rgba(34, 197, 94, 0.2); border: 1px solid var(--success); color: #86efac; }
+        
+        #btn-proxima { display: none; background: var(--primary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; margin-top: 15px; font-weight: bold; }
+
         /* Tela Final */
         #tela-final { display: none; }
         .score-circle { width: 120px; height: 120px; border-radius: 50%; border: 8px solid var(--success); display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; margin: 20px auto; color: var(--success); }
         .btn-restart { background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 12px; cursor: pointer; font-weight: bold; margin-top: 20px; text-transform: uppercase; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -28,53 +40,65 @@
             <h1 id="titulo">Desafio de Alternância</h1>
             <div class="question-box" id="pergunta">Carregando...</div>
             <div class="options" id="opcoes"></div>
+            
+            <div id="feedback-box"></div>
+            <button id="btn-proxima" onclick="proximaPergunta()">Próxima Pergunta →</button>
         </div>
 
         <div id="tela-final">
             <h1>🏆 Resultado Final</h1>
-            <p>Sua pontuação no desafio de lógica foi:</p>
+            <p>Sua pontuação final:</p>
             <div class="score-circle" id="nota-final">0</div>
-            <p id="mensagem-incentivo" style="font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;"></p>
-            <button class="btn-restart" onclick="location.reload()">Jogar Novamente 🔄</button>
+            <p id="mensagem-incentivo"></p>
+            <button class="btn-restart" onclick="location.reload()">Tentar Novamente 🔄</button>
         </div>
     </div>
 
     <script>
         const perguntas = [
             {
-                p: "A lista atual é: 1º Ana, 2º Beto, 3º Caio. Se o Caio (3º) ganhar pontos e ultrapassar o Beto (2º), como fica a nova lista?",
+                p: "A lista atual é: 1º Ana, 2º Beto, 3º Caio. Se o Caio (3º) ultrapassar o Beto (2º), como fica a nova lista?",
                 o: ["1º Ana, 2º Caio, 3º Beto", "1º Caio, 2º Ana, 3º Beto", "1º Ana, 2º Beto, 3º Caio"],
-                r: 0
+                r: 0,
+                explicacao: "Ao ultrapassar apenas o 2º colocado, Caio assume a posição dele, empurrando Beto para baixo. Ana permanece em 1º."
             },
             {
                 p: "Se o 1º lugar trocar de posição com o 3º lugar na lista [Davi, Elô, Fábio], quem passa a ser o novo 1º lugar?",
                 o: ["Elô", "Davi", "Fábio"],
-                r: 2
+                r: 2,
+                explicacao: "Fábio era o 3º. Ao trocar diretamente com o 1º (Davi), ele assume o topo da lista."
             },
             {
                 p: "Bia está em 4º lugar. Se o 1º, o 2º e o 3º lugar forem desclassificados, em qual posição a Bia ficará?",
                 o: ["Continua em 4º lugar", "Passa para o 2º lugar", "Passa para o 1º lugar"],
-                r: 2
+                r: 2,
+                explicacao: "Em um ranking, se todos que estão acima de você saem, você sobe automaticamente para preencher o topo."
             },
             {
                 p: "Guto (2º) e Leo (3º) empataram com 500 pontos. A regra diz: em empate, a ordem alfabética vence. Quem fica em 2º lugar?",
                 o: ["Guto", "Leo", "Os dois ficam em 2º ao mesmo tempo"],
-                r: 0
+                r: 0,
+                explicacao: "Pela regra alfabética, a letra 'G' (Guto) vem antes de 'L' (Leo), mantendo Guto na frente no desempate."
             },
             {
-                p: "Se um novo jogador entrar agora com a MAIOR pontuação de todas, o que acontece com quem era o 1º lugar?",
+                p: "Se um novo jogador entrar com a MAIOR pontuação, o que acontece com quem era o 1º lugar?",
                 o: ["Ele é removido do jogo", "Ele passa a ser o 2º lugar", "Ele continua sendo o 1º lugar"],
-                r: 1
+                r: 1,
+                explicacao: "Sempre que alguém assume o topo, todos os outros jogadores descem exatamente uma posição no ranking."
             }
         ];
 
         let perguntaAtual = 0;
         let acertos = 0;
+        let respondido = false;
 
         function carregarPergunta() {
+            respondido = false;
             const item = perguntas[perguntaAtual];
             document.getElementById('progresso').innerText = `Pergunta ${perguntaAtual + 1} de 5`;
             document.getElementById('pergunta').innerHTML = item.p;
+            document.getElementById('feedback-box').style.display = "none";
+            document.getElementById('btn-proxima').style.display = "none";
             
             const divOpcoes = document.getElementById('opcoes');
             divOpcoes.innerHTML = "";
@@ -83,19 +107,41 @@
                 const div = document.createElement('div');
                 div.className = 'opt';
                 div.innerText = textoOpcao;
-                div.onclick = () => processarResposta(index);
+                div.onclick = () => validarResposta(index, div);
                 divOpcoes.appendChild(div);
             });
         }
 
-        function processarResposta(indexEscolhido) {
-            // Verifica se acertou e guarda o ponto
-            if(indexEscolhido === perguntas[perguntaAtual].r) {
-                acertos++;
-            }
-            
-            perguntaAtual++;
+        function validarResposta(indexEscolhido, elemento) {
+            if(respondido) return;
+            respondido = true;
 
+            const item = perguntas[perguntaAtual];
+            const feedbackBox = document.getElementById('feedback-box');
+            const botoes = document.querySelectorAll('.opt');
+
+            // Desabilita outros cliques
+            botoes.forEach(b => b.classList.add('disabled'));
+
+            if(indexEscolhido === item.r) {
+                acertos++;
+                elemento.classList.add('correct');
+                feedbackBox.innerHTML = "✅ Correto! " + item.explicacao;
+                feedbackBox.className = "feedback-correto";
+            } else {
+                elemento.classList.add('wrong');
+                // Destaca a correta para o aluno aprender
+                botoes[item.r].classList.add('correct');
+                feedbackBox.innerHTML = "❌ Errado. " + item.explicacao;
+                feedbackBox.className = "feedback-errado";
+            }
+
+            feedbackBox.style.display = "block";
+            document.getElementById('btn-proxima').style.display = "inline-block";
+        }
+
+        function proximaPergunta() {
+            perguntaAtual++;
             if(perguntaAtual < perguntas.length) {
                 carregarPergunta();
             } else {
@@ -107,29 +153,24 @@
             document.getElementById('jogo-ativo').style.display = "none";
             document.getElementById('tela-final').style.display = "block";
             
-            // Calcula nota de 0 a 10
             const nota = (acertos / perguntas.length) * 10;
             const elementoNota = document.getElementById('nota-final');
             const elementoMsg = document.getElementById('mensagem-incentivo');
             
-            elementoNota.innerText = nota;
+            elementoNota.innerText = nota.toFixed(1);
 
-            // Mensagens baseadas na nota
             if(nota === 10) {
-                elementoMsg.innerText = "⭐ INCRÍVEL! Você é um mestre da lógica de dados!";
-                elementoNota.style.borderColor = "var(--success)";
+                elementoMsg.innerText = "⭐ INCRÍVEL! Você é um mestre da lógica!";
+                elementoNota.style.color = "var(--success)";
             } else if(nota >= 6) {
-                elementoMsg.innerText = "👍 Muito bem! Você entende como as listas funcionam!";
-                elementoNota.style.borderColor = "#f1c40f";
+                elementoMsg.innerText = "👍 Muito bem! Você entendeu a maioria dos conceitos!";
                 elementoNota.style.color = "#f1c40f";
             } else {
-                elementoMsg.innerText = "💪 Bom esforço! Tente observar mais como as posições mudam.";
-                elementoNota.style.borderColor = "var(--secondary)";
+                elementoMsg.innerText = "💪 Não desista! Revise as explicações e tente novamente.";
                 elementoNota.style.color = "var(--secondary)";
             }
         }
 
-        // Inicia o jogo
         carregarPergunta();
     </script>
 </body>
