@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Copa Byte - Desafio de Lógica</title>
+    <style>
+        :root { --primary: #6366f1; --secondary: #f43f5e; --success: #22c55e; --bg: #0f172a; --card: #1e293b; }
+        body { font-family: 'Poppins', sans-serif; background: var(--bg); color: white; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .game-container { background: var(--card); padding: 40px; border-radius: 24px; width: 650px; text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; }
+        .badge { color: var(--secondary); font-weight: bold; font-size: 0.9rem; text-transform: uppercase; }
+        h1 { margin: 10px 0 20px 0; font-size: 1.8rem; }
+        .question-box { background: rgba(255,255,255,0.05); padding: 25px; border-radius: 15px; margin: 20px 0; font-size: 1.2rem; border-left: 5px solid var(--primary); line-height: 1.6; text-align: left; }
+        .options { display: grid; gap: 12px; margin-top: 20px; }
+        .opt { background: #334155; padding: 18px; border-radius: 12px; cursor: pointer; transition: 0.3s; font-weight: bold; border: 2px solid transparent; text-align: left; }
+        .opt:hover { background: #475569; border-color: var(--primary); transform: translateX(5px); }
+        
+        /* Tela Final */
+        #tela-final { display: none; }
+        .score-circle { width: 120px; height: 120px; border-radius: 50%; border: 8px solid var(--success); display: flex; align-items: center; justify-content: center; font-size: 3rem; font-weight: 900; margin: 20px auto; color: var(--success); }
+        .btn-restart { background: var(--primary); color: white; border: none; padding: 15px 30px; border-radius: 12px; cursor: pointer; font-weight: bold; margin-top: 20px; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+    <div class="game-container">
+        <div id="jogo-ativo">
+            <span class="badge" id="progresso">Pergunta 1 de 5</span>
+            <h1 id="titulo">Desafio de Alternância</h1>
+            <div class="question-box" id="pergunta">Carregando...</div>
+            <div class="options" id="opcoes"></div>
+        </div>
+
+        <div id="tela-final">
+            <h1>🏆 Resultado Final</h1>
+            <p>Sua pontuação no desafio de lógica foi:</p>
+            <div class="score-circle" id="nota-final">0</div>
+            <p id="mensagem-incentivo" style="font-size: 1.2rem; font-weight: bold; margin-bottom: 20px;"></p>
+            <button class="btn-restart" onclick="location.reload()">Jogar Novamente 🔄</button>
+        </div>
+    </div>
+
+    <script>
+        const perguntas = [
+            {
+                p: "A lista atual é: 1º Ana, 2º Beto, 3º Caio. Se o Caio (3º) ganhar pontos e ultrapassar o Beto (2º), como fica a nova lista?",
+                o: ["1º Ana, 2º Caio, 3º Beto", "1º Caio, 2º Ana, 3º Beto", "1º Ana, 2º Beto, 3º Caio"],
+                r: 0
+            },
+            {
+                p: "Se o 1º lugar trocar de posição com o 3º lugar na lista [Davi, Elô, Fábio], quem passa a ser o novo 1º lugar?",
+                o: ["Elô", "Davi", "Fábio"],
+                r: 2
+            },
+            {
+                p: "Bia está em 4º lugar. Se o 1º, o 2º e o 3º lugar forem desclassificados, em qual posição a Bia ficará?",
+                o: ["Continua em 4º lugar", "Passa para o 2º lugar", "Passa para o 1º lugar"],
+                r: 2
+            },
+            {
+                p: "Guto (2º) e Leo (3º) empataram com 500 pontos. A regra diz: em empate, a ordem alfabética vence. Quem fica em 2º lugar?",
+                o: ["Guto", "Leo", "Os dois ficam em 2º ao mesmo tempo"],
+                r: 0
+            },
+            {
+                p: "Se um novo jogador entrar agora com a MAIOR pontuação de todas, o que acontece com quem era o 1º lugar?",
+                o: ["Ele é removido do jogo", "Ele passa a ser o 2º lugar", "Ele continua sendo o 1º lugar"],
+                r: 1
+            }
+        ];
+
+        let perguntaAtual = 0;
+        let acertos = 0;
+
+        function carregarPergunta() {
+            const item = perguntas[perguntaAtual];
+            document.getElementById('progresso').innerText = `Pergunta ${perguntaAtual + 1} de 5`;
+            document.getElementById('pergunta').innerHTML = item.p;
+            
+            const divOpcoes = document.getElementById('opcoes');
+            divOpcoes.innerHTML = "";
+            
+            item.o.forEach((textoOpcao, index) => {
+                const div = document.createElement('div');
+                div.className = 'opt';
+                div.innerText = textoOpcao;
+                div.onclick = () => processarResposta(index);
+                divOpcoes.appendChild(div);
+            });
+        }
+
+        function processarResposta(indexEscolhido) {
+            // Verifica se acertou e guarda o ponto
+            if(indexEscolhido === perguntas[perguntaAtual].r) {
+                acertos++;
+            }
+            
+            perguntaAtual++;
+
+            if(perguntaAtual < perguntas.length) {
+                carregarPergunta();
+            } else {
+                mostrarResultadoFinal();
+            }
+        }
+
+        function mostrarResultadoFinal() {
+            document.getElementById('jogo-ativo').style.display = "none";
+            document.getElementById('tela-final').style.display = "block";
+            
+            // Calcula nota de 0 a 10
+            const nota = (acertos / perguntas.length) * 10;
+            const elementoNota = document.getElementById('nota-final');
+            const elementoMsg = document.getElementById('mensagem-incentivo');
+            
+            elementoNota.innerText = nota;
+
+            // Mensagens baseadas na nota
+            if(nota === 10) {
+                elementoMsg.innerText = "⭐ INCRÍVEL! Você é um mestre da lógica de dados!";
+                elementoNota.style.borderColor = "var(--success)";
+            } else if(nota >= 6) {
+                elementoMsg.innerText = "👍 Muito bem! Você entende como as listas funcionam!";
+                elementoNota.style.borderColor = "#f1c40f";
+                elementoNota.style.color = "#f1c40f";
+            } else {
+                elementoMsg.innerText = "💪 Bom esforço! Tente observar mais como as posições mudam.";
+                elementoNota.style.borderColor = "var(--secondary)";
+                elementoNota.style.color = "var(--secondary)";
+            }
+        }
+
+        // Inicia o jogo
+        carregarPergunta();
+    </script>
+</body>
+</html>
